@@ -1,6 +1,9 @@
 /**
  * @fileOverview facets of chart
  * @author dxq613@gmail.com
+ * 分面，将一份数据按照某个维度分隔成若干子集，然后创建一个图表的矩阵，
+ * 将每一个数据子集绘制到图形矩阵的窗格中，所有子图采用相同的图表类型，
+ * 并进行了一定的设计，使得它们之间方便进行比较
  */
 
 const Global = require('../global');
