@@ -11,6 +11,7 @@ const DomUtil = Util.DomUtil;
 const Global = require('../global');
 const Plot = require('../component/plot');
 const Controller = require('./controller/index');
+//类似绘制区域的rect坐标?
 const mergeBBox = require('./util/merge-bbox');
 const bboxOfBackPlot = require('./util/bbox-of-back-plot');
 const plotRange2BBox = require('./util/plot-range2bbox');
@@ -31,6 +32,7 @@ function _isScaleExist(scales, compareScale) {
   return flag;
 }
 
+//判断array是否相等
 function isEqualArray(arr1, arr2) {
   return Util.isEqualWith(arr1, arr2, (v1, v2) => v1 === v2);
 }
@@ -47,7 +49,8 @@ class Chart extends View {
    */
   getDefaultCfg() {
     const viewCfg = super.getDefaultCfg();
-    return Util.mix(viewCfg, {
+    //G2.Chart({cfg}) 中的配置在构造函数的时候就已经一一对应初始化了
+    return Util.mix(viewCfg, { //chart，facet,view 默认的config都是不同的
       id: null,
       forceFit: false,
       container: null,
@@ -55,7 +58,7 @@ class Chart extends View {
       canvas: null,
       width: 500,
       height: 500,
-      pixelRatio: null,
+      pixelRatio: null,//像素比?
       backPlot: null,
       frontPlot: null,
       plotBackground: null,
@@ -71,11 +74,12 @@ class Chart extends View {
 
   init() {
     const self = this;
+    // -- 已经在父类view的constructor中就初始化
     const viewTheme = self.get('viewTheme');
-    self._initCanvas();
+    self._initCanvas();//new Canvas
     self._initPlot();
     self._initEvents();
-    super.init();
+    super.init(); // 调用 view.js 去初始化
 
     const tooltipController = new Controller.Tooltip({
       chart: self,
@@ -141,27 +145,30 @@ class Chart extends View {
     let width = this.get('width');
     const height = this.get('height');
     if (Util.isString(container)) {
+      //获取到页面的view
       container = document.getElementById(container);
-      if (!container) {
+      if (!container) { // -- 必须配置
         throw new Error('Please specify the container for the chart!');
       }
       this.set('container', container);
     }
     const wrapperEl = DomUtil.createDom('<div style="position:relative;"></div>');
+    //container节点中添加wrapper dom
     container.appendChild(wrapperEl);
     this.set('wrapperEl', wrapperEl);
-    if (this.get('forceFit')) {
+    if (this.get('forceFit')) {//强制跟随宽度缩放
       width = DomUtil.getWidth(container, width);
       this.set('width', width);
     }
     const renderer = this.get('renderer');
+    //新new canvas
     const canvas = new Canvas({
       containerDOM: wrapperEl,
       width,
       height,
       // NOTICE: 有问题找青湳
       pixelRatio: renderer === 'svg' ? 1 : this.get('pixelRatio'),
-      renderer
+      renderer // 渲染的方式 canvas ? svg ?
     });
     this.set('canvas', canvas);
   }
@@ -181,9 +188,10 @@ class Chart extends View {
       zIndex: 3
     }); // 图表前面的容器
 
-    self.set('backPlot', backPlot);
-    self.set('middlePlot', plotContainer);
-    self.set('frontPlot', frontPlot);
+    //TODO 这里设置的zIndex貌似和官网描述不符合
+    self.set('backPlot', backPlot);//最下层 canvas，坐标轴 axis 和 line image rect arc 这四种类型的辅助标记 guide 在这一层绘制
+    self.set('middlePlot', plotContainer);//中间层，绘制图表的主体内容几何标记 geom
+    self.set('frontPlot', frontPlot);//最上层 canvas，图例 legend、提示信息 tooltip、和 text tag html 这三种类型的辅助标记 guide 在这一层绘制
   }
 
   // 初始化背景
@@ -203,11 +211,13 @@ class Chart extends View {
 
   _initEvents() {
     if (this.get('forceFit')) {
+      //监听window的resize事件，事件由工具wrapBehavior传递给 _initForceFitEvent 处理
       window.addEventListener('resize', Util.wrapBehavior(this, '_initForceFitEvent'));
     }
   }
 
   _initForceFitEvent() {
+    //200ms刷新当前的宽高度
     const timer = setTimeout(Util.wrapBehavior(this, 'forceFit'), 200);
     clearTimeout(this.get('resizeTimer'));
     this.set('resizeTimer', timer);
@@ -349,7 +359,7 @@ class Chart extends View {
   }
 
   /**
-   * 创建一个视图
+   * 创建一个子视图
    * @param  {Object} cfg 视图的配置项
    * @return {View} 视图对象
    */
@@ -358,16 +368,18 @@ class Chart extends View {
     cfg.theme = this.get('theme');
     cfg.parent = this;
     cfg.backPlot = this.get('backPlot');
-    cfg.middlePlot = this.get('middlePlot');
+    cfg.middlePlot = this.get('middlePlot');//绘制 geoms
     cfg.frontPlot = this.get('frontPlot');
     cfg.canvas = this.get('canvas');
     if (Util.isNil(cfg.animate)) {
       cfg.animate = this.get('animate');
     }
+    //新cfg和options中的三个配置混合(scales,coord,axes)
     cfg.options = Util.mix({}, this._getSharedOptions(), cfg.options);
     const view = new View(cfg);
     view.set('_id', 'view' + this.get('views').length); // 标识 ID，防止同用户设定的 id 重名
     this.get('views').push(view);
+    //发射add view的事件，参数是view自身组成的对象
     this.emit('addview', { view });
     return view;
   }
@@ -385,6 +397,7 @@ class Chart extends View {
   _getSharedOptions() {
     const options = this.get('options');
     const sharedOptions = {};
+    //将已经定义的options中的 scales coord axes三个字段数据共享给new的view使用
     Util.each([ 'scales', 'coord', 'axes' ], function(name) {
       sharedOptions[name] = Util.cloneDeep(options[name]);
     });
@@ -394,6 +407,15 @@ class Chart extends View {
   /**
    * @override
    * 当前chart 的范围
+   * {
+  'start': {'x':100,'y':320}, // 绘图区域起始点坐标，可以理解为坐标系原点
+  'end': {'x':720,'y':40}, // 绘图区域结束点坐标
+  'tl': {'x':100,'y':40}, // 绘图区域左上角点坐标，top-left
+  'tr': {'x':720,'y':40}, // 绘图区域右上角点坐标，top-right
+  'bl': {'x':100,'y':320}, // 绘图区域左下角点坐标，bottom-left
+  'br': {'x':720,'y':320}, // 绘图区域右下角点坐标，bottom-right
+  'cc': {'x':410,'y':180} // 绘图区域中心店坐标
+}
    */
   getViewRegion() {
     const plotRange = this.get('plotRange');
@@ -411,20 +433,21 @@ class Chart extends View {
    */
   legend(field, cfg) {
     const options = this.get('options');
-    if (!options.legends) {
-      options.legends = {};
+    if (!options.legends) {//先去options看是否有值
+      options.legends = {};//初始化
     }
 
     let legends = {};
-    if (field === false) {
+    if (field === false) {//不展示图例
       options.legends = false;
-    } else if (Util.isObject(field)) {
+    } else if (Util.isObject(field)) {//直接就是对象，表示配置信息
       legends = field;
-    } else if (Util.isString(field)) {
+    } else if (Util.isString(field)) {// 设置字段名上的图例配置
       legends[field] = cfg;
     } else {
       legends = cfg;
     }
+    //对象混合
     Util.mix(options.legends, legends);
 
     return this;
@@ -442,11 +465,11 @@ class Chart extends View {
       options.tooltip = {};
     }
 
-    if (visible === false) {
+    if (visible === false) {//配置不可见
       options.tooltip = false;
-    } else if (Util.isObject(visible)) {
+    } else if (Util.isObject(visible)) {//对象代表是config
       Util.mix(options.tooltip, visible);
-    } else {
+    } else {//其他情况都是config
       Util.mix(options.tooltip, cfg);
     }
 
@@ -504,7 +527,7 @@ class Chart extends View {
    */
   render() {
     const self = this;
-    // 需要自动计算边框，则重新设置
+    // 需要自动计算边框，则重新设置 -- 当repaint后 keepPadding为false
     if (!self.get('keepPadding') && self._isAutoPadding()) {
       self.beforeRender(); // 初始化各个 view 和 绘制
       self.drawComponents();

@@ -62,34 +62,51 @@ class View extends Base {
    * @protected
    * @return {Object} 默认属性
    */
-  getDefaultCfg() {
+  getDefaultCfg() { //view对应的默认config ---> base里面是空的
     return {
-      viewContainer: null,
-      coord: null,
+      viewContainer: null,//绘制view的视图容器id?
+      coord: null, //几何坐标系(目前全是二维坐标 直角,极坐标,地理, 螺旋坐标)
       start: { x: 0, y: 0 },
       end: { x: 1, y: 1 },
-      geoms: [],
-      scales: {},
-      options: {},
+      geoms: [],//几何标记-点、线、面这些几何图形-都是配置此来决定绘制什么类型图表
+      scales: {},//度量-主要是归一化的操作，主要针对 连续数据类型(将数据缩放到[0,1]的范围)和分类数据类型(采用index形式[0,1....])
+      options: {},//视觉通道选项(position,color,size,shape,opacity) => 这些都是属于一个geoms的
       scaleController: null,
       padding: 0,
       theme: null,
       parent: null,
       tooltipEnable: true, // 是否展示 tooltip
-      animate: Global.animate,
-      visible: true
+      animate: Global.animate,//动画配置默认开启
+      visible: true //是否可见？？
     };
   }
 
   constructor(cfg) {
     super(cfg);
     const self = this;
-    self._setTheme();
+    self._setTheme();//主题配置
+    //迭代所有的属性....
+    if(Util.isObject(Geom)){
+      for (const k in Geom) { // 获取全部非继承属性
+        if (Geom.hasOwnProperty(k)) {
+         console.log("key:" + k)
+        }
+      }
+    }
+    //我感觉这个geom是来至于 geom/index.js 而不是base
+    //是在index.js中操作Geom然后引入的是 base.js 但是属性已经增加了
+    //添加 geom 相关的方法(edge,line等...)
     Util.each(Geom, function(GeomConstructor, className) {
+      //属性第一个字母小写
       const methodName = Util.lowerFirst(className);
-      self[methodName] = function(cfg = {}) {
+      //将迭代的属性变为 view的属性，
+      // console.log(GeomConstructor + " -> " + className);
+      //全是完 index.js中增加的属性中 添加config配置 - 其实就是主题配置
+      self[methodName] = function(cfg = {}) { //返回几何标记的实例
         cfg.viewTheme = self.get('viewTheme');
+        //创建geom图 - area,line等(构造函数形式new)
         const geom = new GeomConstructor(cfg);
+        //添加此view对应的几何标记
         self.addGeom(geom);
         return geom;
       };
@@ -100,25 +117,27 @@ class View extends Base {
 
   _setTheme() {
     const self = this;
+    //获取theme属性
     const theme = self.get('theme');
     const viewTheme = {};
     let newTheme = {};
-    if (Util.isObject(theme)) {
+    if (Util.isObject(theme)) {//theme对象存在 直接赋值
       newTheme = theme;
-    } else if (Util.indexOf(Object.keys(Theme), theme) !== -1) {
+    } else if (Util.indexOf(Object.keys(Theme), theme) !== -1) {//（第一次赋值时）对象不存在，theme有预设，直接赋值
       newTheme = Theme[theme];
     }
+    //深度拷贝newTheme到viewTheme
     Util.deepMix(viewTheme, Global, newTheme);
     self.set('viewTheme', viewTheme);
   }
 
   /**
    * @protected
-   * 初始化
+   * 构造函数中创建完成后，就初始化 - 注意子类初始化复写方法
    */
   init() {
     this._initViewPlot(); // 先创建容器
-    if (this.get('data')) {
+    if (this.get('data')) {//有数据，就初始化 -- 初始化直接带数据那种
       this._initData(this.get('data'));
     }
     this._initOptions();
@@ -126,7 +145,7 @@ class View extends Base {
     this._bindEvents();
   }
 
-  // 初始化配置项
+  // 初始化配置项 -- MD 为啥名字用 config,要用options来迷惑
   _initOptions() {
     const self = this;
     const options = Util.mix({}, self.get('options')); // 防止修改原始值
@@ -145,6 +164,7 @@ class View extends Base {
       this.set('tooltipEnable', false);
     }
 
+    //geoms options的解析
     if (options.geoms && options.geoms.length) {
       Util.each(options.geoms, function(geomOption) {
         self._createGeom(geomOption);
@@ -158,18 +178,18 @@ class View extends Base {
     if (coordController) {
       coordController.reset(options.coord);
     }
-    this.set('options', options);
+    this.set('options', options);//options 保存起来
   }
 
   _createGeom(cfg) {
     const type = cfg.type;
     let geom;
-    if (this[type]) {
-      geom = this[type]();
+    if (this[type]) {//type对应的属性是否存在 也即是 type = line 类似于这个
+      geom = this[type](); // => geom = line()
       Util.each(cfg, function(v, k) {
         if (geom[k]) {
 
-          if (Util.isObject(v) && v.field) { // 配置项传入
+          if (Util.isObject(v) && v.field) { // 配置项传入 k-{}配置的模式
             if (v === 'label') {
               geom[k](v.field, v.callback, v.cfg);
             } else {
@@ -181,7 +201,7 @@ class View extends Base {
               });
               geom[k](v.field, cfg);
             }
-          } else {
+          } else {//简单的k-v值
             geom[k](v);
           }
         }
@@ -219,21 +239,28 @@ class View extends Base {
 
   _initViewPlot() {
     if (!this.get('viewContainer')) { // 用于 geom 的绘制
+      //将Chart初始化的middlePlot canvas传递给 viewContainer
       this.set('viewContainer', this.get('middlePlot'));
     }
   }
 
   _initGeoms() {
+    //geoms已经在初始化的时候，创建好了...保存的是 全部geom实例
     const geoms = this.get('geoms');
     const filteredData = this.get('filteredData');
     const coord = this.get('coord');
     const viewId = this.get('_id');
     for (let i = 0; i < geoms.length; i++) {
       const geom = geoms[i];
+      //过滤后的坐标系
       geom.set('data', filteredData);
+      //坐标系
       geom.set('coord', coord);
+      //geom的id
       geom.set('_id', viewId + '-geom' + i);
+      //scale度量配置的key
       geom.set('keyFields', this.get('keyFields'));
+      //参见 geom/base.js#init()
       geom.init();
     }
   }
@@ -285,7 +312,7 @@ class View extends Base {
   }
 
   /**
-   * View 所在的范围
+   * View 所在的范围 -- 这个应该对标g2的坐标系(左下角)
    * @protected
    * @return {Object} View 所在的范围
    */
@@ -294,12 +321,12 @@ class View extends Base {
     const parent = self.get('parent');
     let start;
     let end;
-    if (parent) {
+    if (parent) {//Chart中的子View才有parent属性
       const region = parent.getViewRegion();
       const viewRegion = self._getViewRegion(region.start, region.end);
       start = viewRegion.start;
       end = viewRegion.end;
-    } else {
+    } else {//如果没有parent，应该是说明view就是指的是单个的 chart
       start = self.get('start');
       end = self.get('end');
     }
@@ -309,7 +336,7 @@ class View extends Base {
     };
   }
 
-  // 获取 range 所在的范围
+  // 获取 range 所在的范围 -- 子view相对父chart的坐标区域 对应的range范围(padding等去除)
   _getViewRegion(plotStart, plotEnd) {
     const start = this.get('start');
     const end = this.get('end');
@@ -344,6 +371,7 @@ class View extends Base {
   _createCoord() {
     const coordController = this.get('coordController');
     const region = this.getViewRegion();
+    //通过位置信息创建 coord
     const coord = coordController.createCoord(region.start, region.end);
     this.set('coord', coord);
   }
@@ -385,7 +413,7 @@ class View extends Base {
     eventController.bindEvents();
     this.set('eventController', eventController);
   }
-  // 清理时间
+  // 清理事件
   _clearEvents() {
     const eventController = this.get('eventController');
     eventController && eventController.clearEvents();
@@ -405,6 +433,7 @@ class View extends Base {
   }
 
   _adjustScale() {
+    //确定range
     this._setCatScalesRange();
     const geoms = this.get('geoms');
     const scaleController = this.get('scaleController');
@@ -412,9 +441,17 @@ class View extends Base {
 
     for (let i = 0; i < geoms.length; i++) {
       const geom = geoms[i];
-      if (geom.get('type') === 'interval') {
+      if (geom.get('type') === 'interval') {//用面积表示的图形,柱状图,饼图
         const yScale = geom.getYScale();
+        //解构Y轴的度量
+        /**
+         a: {
+           type: 'cat' // 声明 a 字段的类型
+         }
+         a是field  type = 'cat'
+         */
         const { field, min, max, type } = yScale;
+        //意思是没有{field{ x: 0}}这样的定义，并且类型不是 time(时间)
         if (!(colDefs[field] && colDefs[field].min) && type !== 'time') {
           if (min > 0) {
             yScale.change({
@@ -430,10 +467,15 @@ class View extends Base {
     }
   }
 
+  /**
+   * 通过不同的 坐标系 算出每个坐标轴对应的range值[0,1]度量
+   * @private
+   */
   _setCatScalesRange() {
     const self = this;
     const coord = self.get('coord');
     const viewTheme = self.get('viewTheme');
+    //geom => attr[position].scales[0]
     const xScale = self.getXScale();
     const yScales = self.getYScales();
     let scales = [];
@@ -442,26 +484,28 @@ class View extends Base {
     scales = scales.concat(yScales);
     const inFullCircle = coord.isPolar && isFullCircle(coord);
     const scaleController = self.get('scaleController');
+    //这坨的值是在设置数据是传入或者 option... => chart.source(data, defs)
     const colDefs = scaleController.defs;
     Util.each(scales, function(scale) {
+      //TODO 这个条件好多...列定义存在 x,y 轴定义的度量且range未定义？
       if ((scale.isCategory || scale.isIdentity) && scale.values && !(colDefs[scale.field] && colDefs[scale.field].range)) {
         const count = scale.values.length;
         let range;
-        if (count === 1) {
+        if (count === 1) {//只有一个分类
           range = [ 0.5, 1 ]; // 只有一个分类时,防止计算出现 [0.5,0.5]的状态
-        } else {
+        } else { //坐标轴上的分类不止一个
           let widthRatio = 1;
           let offset = 0;
-          if (inFullCircle) {
-            if (!coord.isTransposed) {
+          if (inFullCircle) {//极坐标饼图
+            if (!coord.isTransposed) {//x,y坐标不转置
               range = [ 0, 1 - 1 / count ];
-            } else {
+            } else {// 转置x -> y  y -> x
               widthRatio = viewTheme.widthRatio.multiplePie;
               offset = 1 / count * widthRatio;
               range = [ offset / 2, 1 - offset / 2 ];
             }
-          } else {
-            offset = 1 / count * 1 / 2; // 两边留下分类空间的一半
+          } else {//非极坐标--> 笛卡尔坐标
+            offset = 1 / count / 2; // 两边留下分类空间的一半
             range = [ offset, 1 - offset ]; // 坐标轴最前面和最后面留下空白防止绘制柱状图时
           }
         }
@@ -709,6 +753,7 @@ class View extends Base {
     const self = this;
     const filters = self._getFilters();
     if (filters) {
+      //TODO 分析Frame数据格式
       data = data.filter(function(obj) {
         let rst = true;
         Util.each(filters, function(fn, k) {
@@ -730,7 +775,7 @@ class View extends Base {
     if (field === false) {
       options.axes = false;
     } else {
-      if (!options.axes) {
+      if (!options.axes) {//首先制空
         options.axes = {};
       }
       const axisOptions = options.axes;
@@ -751,9 +796,21 @@ class View extends Base {
         keyFields.push(field);
       }
     });
+    //keyFields存放 type,values等字段
     this.set('keyFields', keyFields);
   }
 
+  /**
+     scales: {
+        e: {
+          type: 'cat',
+          values: [ 'a', 'b', 'c' ]
+        }
+       }
+   * @param field | Object 字段名(数据字段) | 对象(直接代表config)
+   * @param cfg 配置信息
+   * @returns {View}
+   */
   scale(field, cfg) {
     const options = this.get('options');
     const scaleDefs = options.scales;
@@ -908,6 +965,12 @@ class View extends Base {
     this._createCoord();
   }
 
+  /**
+   * 为View设置data数据
+   * @param data
+   * @param scales
+   * @returns {View}
+   */
   source(data, scales) {
     this._initData(data);
     if (scales) {
@@ -927,7 +990,7 @@ class View extends Base {
 
   _initData(data) {
     const dataView = this.get('dataView');
-    if (dataView) {
+    if (dataView) {//如果有数据，全部清空 -- 名字不应该叫 initData. 感觉奇怪
       dataView.off('change', Util.getWrapBehavior(this, '_onViewChange'));
       this.set('dataView', null);
     }
@@ -948,7 +1011,7 @@ class View extends Base {
     this.repaint();
   }
 
-  // 初始化各个 view 和绘制辅助元素
+  // 初始化各个 view 和绘制辅助元素 -- chart里面可能存在多个view，挨着 beforeRender&initView
   beforeRender() {
     const views = this.get('views');
     // 如果存在 views 则初始化子 view 的方法
@@ -1003,11 +1066,18 @@ class View extends Base {
     return this;
   }
 
+  //所有的 init 操作都是在render => beforeRender 链下执行
+  /**
+   * 数据 -> 数据过滤 -> 创建coord坐标系 -> 创建几何标记 -> 调整scale度量
+   */
   initView() {
     const data = this.get('data') || [];
+    //执行filter的配置来过滤某些field字段的数据
     const filteredData = this.execFilter(data);
+    //过滤后的数据
     this.set('filteredData', filteredData);
     // if (!Util.isEmpty(data)) {
+    //数据有否🈶都要执行...
     this._createCoord(); // draw geometry 前绘制区域可能会发生改变
     this.emit('beforeinitgeoms');
     this._initGeoms();

@@ -47,10 +47,11 @@ class CoordController {
    * 创建坐标系对象
    * @param  {Object} start 坐标系起始点
    * @param  {Object} end   坐标系结束点
-   * @return {Function} 坐标系的构造函数
+   * @return {Function} 坐标系的构造函数 -- 哈皮，明明是返回的实例
    */
   createCoord(start, end) {
     const self = this;
+    //这些参数在coordController初始的时候已经有设置了
     const type = self.type;
     const cfg = self.cfg;
     let C; // 构造函数

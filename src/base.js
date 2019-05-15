@@ -6,12 +6,14 @@
 const EventEmitter = require('wolfy87-eventemitter');
 const Util = require('./util');
 
+//基于eventEmitter 使得自己的模块具有事件的触发和监听功能
 class Base extends EventEmitter {
 
   getDefaultCfg() {
     return {};
   }
 
+  //关于类私有属性和类语法糖详解：http://es6.ruanyifeng.com/#docs/class
   constructor(cfg) {
     super();
     const attrs = {
@@ -19,6 +21,7 @@ class Base extends EventEmitter {
     };
     const defaultCfg = this.getDefaultCfg();
     this._attrs = attrs;
+    //将defaultCfg & cfg 和 attrs 属性组合起来
     Util.assign(attrs, defaultCfg, cfg);
   }
 
@@ -49,7 +52,7 @@ class Base extends EventEmitter {
   /**
    * @protected
    * @param {Boolean} visible 是否可见
-   * 显示、隐藏
+   * 显示、隐藏事件
    */
   changeVisible(/* visible */) {
 

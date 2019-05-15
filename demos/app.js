@@ -119,12 +119,12 @@ function startService(port) {
       // 从请求中提取出url  req.url
       const pathname = parseurl(req).pathname;
       if (pathname === '/demos/index.html') {
-        console.log('__dirname:' + __dirname);
-        console.log('process.cwd():' + process.cwd());
+        // console.log('__dirname:' + __dirname);
+        // console.log('process.cwd():' + process.cwd());
         const demoFiles = getFiles(__dirname)
           .filter(filename => { // html结尾文件
             return extname(filename) === '.html';
-          })
+          })//找到的文件也就是 demos/**.html结尾的文件
           .map(filename => {
             // 去除掉文件路径后面的.html后缀 /a/ab/c.html => c
             const bn = basename(filename, '.html');

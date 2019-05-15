@@ -33,15 +33,21 @@
       container: 'canvas',
       forceFit: true,
       height: window.innerHeight,
-      padding: [ 120, 0, 120, 0 ]
+      padding: [ 120, 120, 120, 120 ],
+      // plotCfg: {
+      //   margin: [],
+      //   border: {
+      //     stroke: 'red'
+      //   }
+      // }
     });
     chart.legend(false);
     chart.tooltip({
-      showTitle: false
+      showTitle: true
     });
     chart.scale({
       x: {
-        sync: true
+        sync: true //这个字段用在是否同步上？？？？
       },
       y: {
         sync: true
@@ -51,6 +57,7 @@
     edgeView.source(dv.edges);
     edgeView.coord('polar').reflect('y');
     edgeView.axis(false);
+    //通过一个循环塞到view里面的
     edgeView.edge()
       .position('x*y')
       .shape('arc')
