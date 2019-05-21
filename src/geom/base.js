@@ -1124,6 +1124,10 @@ class GeomBase extends Base {
     return result;
   }
 
+  /**
+   * 获取当前配置存储的图例和标准图例的匹配参数
+   * @returns {Array}
+   */
   getAttrsForLegend() {
     const attrs = this.get('attrs');
     const rst = [];

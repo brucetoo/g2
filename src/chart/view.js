@@ -376,12 +376,14 @@ class View extends Base {
     this.set('coord', coord);
   }
 
+  //绘制坐标轴
   _renderAxes() {
     const options = this.get('options');
     const axesOptions = options.axes;
     if (axesOptions === false) { // 不渲染坐标轴
       return;
     }
+    //坐标轴是在 backPlot上绘制的
     const axisController = this.get('axisController');
     axisController.container = this.get('backPlot');
     axisController.coord = this.get('coord');
@@ -1025,6 +1027,7 @@ class View extends Base {
   drawComponents() {
     const views = this.get('views');
     // 如果存在 views 则初始化子 view 的方法
+    // -- 这里只针对chart的子view，但是子view不存在子view的情况
     Util.each(views, function(view) {
       view.drawComponents();
     });
@@ -1042,11 +1045,12 @@ class View extends Base {
       const animate = this.get('animate');
       if (animate) {
         const isUpdate = this.get('isUpdate');
+        //所有view执行动画
         Util.each(views, function(view) {
           Animate.execAnimation(view, isUpdate);
         });
         Animate.execAnimation(this, isUpdate);
-      } else {
+      } else {//painter.draw
         canvas.draw();
       }
     }
@@ -1058,7 +1062,7 @@ class View extends Base {
     this.beforeRender();
     this.emit('beforepaint');
     this.drawComponents();
-    this.paint();
+    this.paint();//绘制
     this.emit('afterpaint');
     this.drawCanvas(stopDraw);
     this.emit('afterrender');
@@ -1093,7 +1097,7 @@ class View extends Base {
     });
     const data = this.get('data');
     if (!Util.isEmpty(data)) {
-      this._drawGeoms();
+      this._drawGeoms();// -- 这里是绘制几何标记
     }
     // 如果 view 隐藏了，隐藏所有的图形和坐标轴
     if (!this.get('visible')) {

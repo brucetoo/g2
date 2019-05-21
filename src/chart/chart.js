@@ -40,6 +40,17 @@ function isEqualArray(arr1, arr2) {
 /**
  * 图表的入口
  * @class Chart
+ *const options = {
+  scales: {object}, // 列定义声明
+  coord: {object}, // 坐标系配置
+  axes: {object}, // 坐标轴配置
+  legends: {object}, // 图例配置
+  guides: {array}, // 图表辅助元素配置
+  filters: {object}, // 数据过滤配置
+  tooltip: {object}, // 提示信息配置
+  facet: {object}, // 分面配置
+  geoms: {array} // 图形语法相关配置
+}
  */
 class Chart extends View {
   /**
@@ -110,13 +121,14 @@ class Chart extends View {
     // 图例在最前面的一层
     const frontPlot = this.get('frontPlot');
     const frontBBox = frontPlot.getBBox();
-    // 坐标轴在最后面的一层
 
+    // 坐标轴在最后面的一层
     const backPlot = this.get('backPlot');
     const backBBox = bboxOfBackPlot(backPlot, plotRange2BBox(this.get('plotRange')));
 
+    //在两层中计算出满足最小的范围的group box即可, min...
     const box = mergeBBox(frontBBox, backBBox);
-    const outter = [
+    const outter = [ //左上又下超出的部分
       0 - box.minY, // 上面超出的部分
       box.maxX - this.get('width'), // 右边超出的部分
       box.maxY - this.get('height'), // 下边超出的部分
@@ -126,7 +138,8 @@ class Chart extends View {
     const autoPadding = Util.toAllPadding(padding);
     for (let i = 0; i < autoPadding.length; i++) {
       if (autoPadding[i] === AUTO_STR) {
-        const tmp = Math.max(0, outter[i]);
+        const tmp = Math.max(0, outter[i]);//刚好把超出的部分padding了，就能看全绘制的图形
+        //autoPaddingAppend是一个padding后添加的值 上面带间隔
         autoPadding[i] = tmp + this.get('autoPaddingAppend');
       }
     }
@@ -239,10 +252,12 @@ class Chart extends View {
         const scales = [];
         Util.each(geoms, geom => {
           const view = geom.get('view');
+          //['color', 'shape', 'size'] 其中的值
           const attrs = geom.getAttrsForLegend();
           Util.each(attrs, attr => {
             const type = attr.type;
             const scale = attr.getScale(type);
+            //图例相关的配置 -- 度量?
             if (scale.field && scale.type !== 'identity' && !_isScaleExist(scales, scale)) {
               scales.push(scale);
               const filteredValues = view.getFilteredOutValues(scale.field);
@@ -513,6 +528,9 @@ class Chart extends View {
   }
 
   // chart 除了view 上绘制的组件外，还会绘制图例和 tooltip
+  /**
+   * chart#drawComponents -> view#drawComponents ->render axes&guide
+   */
   drawComponents() {
     super.drawComponents();
     // 一般是点击图例时，仅仅隐藏某些选项，而不销毁图例
@@ -530,6 +548,7 @@ class Chart extends View {
     // 需要自动计算边框，则重新设置 -- 当repaint后 keepPadding为false
     if (!self.get('keepPadding') && self._isAutoPadding()) {
       self.beforeRender(); // 初始化各个 view 和 绘制
+      //除view以外的所有组件
       self.drawComponents();
       const autoPadding = self._getAutoPadding();
       const plot = self.get('plot');
@@ -539,6 +558,7 @@ class Chart extends View {
         plot.repaint();
       }
     }
+    //图例绘制层
     const middlePlot = self.get('middlePlot');
     if (self.get('limitInPlot') && !middlePlot.attr('clip')) {
       const clip = Util.getClipByRange(self.get('plotRange')); // TODO Polar coord

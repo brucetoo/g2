@@ -21,10 +21,15 @@
     const ds = new DataSet();
     const dv = ds.createView().source(data, {
       type: 'graph',
+      //Graph Connector对应的 edges 边界对应的数值
       edges: d => d.links
+      //还可以指定nodes对应的字段
+      //nodes: d => d.nodes
+
+      //edges代表图之间的线，nodes代表每个节点，代表数据对象
     });
     dv.transform({
-      type: 'diagram.arc',
+      type: 'diagram.arc',//将数据处理成弧长连接图
       marginRatio: 0.5
 //      sortBy: 'frequency' // id, weight, frequency, {function}
     });
@@ -34,12 +39,6 @@
       forceFit: true,
       height: window.innerHeight,
       padding: [ 120, 120, 120, 120 ],
-      // plotCfg: {
-      //   margin: [],
-      //   border: {
-      //     stroke: 'red'
-      //   }
-      // }
     });
     chart.legend(false);
     chart.tooltip({
@@ -47,21 +46,28 @@
     });
     chart.scale({
       x: {
-        sync: true //这个字段用在是否同步上？？？？
+        sync: true //这个字段用在多个view用同一个字段时候的数据同步！！！
       },
       y: {
         sync: true
       }
     });
-    const edgeView = chart.view();
+
+    /**
+     * 弧长连接图的说明： https://www.yuque.com/antv/g2-docs/api-transform#117fpl
+     * 处理完的的数据不能只能用 chart.source(dv)处理，而是需要分别用 eage和node来导入不同
+     * 的数据，dv.edges & dv.nodes
+     */
+    const edgeView = chart.view()
     edgeView.source(dv.edges);
-    edgeView.coord('polar').reflect('y');
+    edgeView.coord('polar').reflect('y');//TODO reflect这个镜像没太懂！！！！
     edgeView.axis(false);
-    //通过一个循环塞到view里面的
+    console.log('info:'+ JSON.stringify(dv.edges))
+    //通过一个循环塞到view里面的 source code in ./geom/index.js
     edgeView.edge()
       .position('x*y')
       .shape('arc')
-      .color('source')
+      .color('target')
       .opacity(0.5)
       .tooltip('source*target');
 
@@ -78,16 +84,8 @@
       .style({
         stroke: 'grey'
       })
-//      .label('name', { // label configuration for non-polar coord
-//        offset: -10,
-//        textStyle: {
-//          textAlign: 'left',
-//          rotate: 90,
-//          fill: 'black',
-//        }
-//      });
       .label('name', {
-        labelEmit: true,
+        labelEmit: true,//label向外发射...
         textStyle: {
           fill: 'black'
         }
