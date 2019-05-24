@@ -77,6 +77,7 @@ const ShapeBase = {
   }
 };
 
+//此属性会被mix到图形工厂类中！！！
 const ShapeFactoryBase = {
   defaultShapeType: null,
   setCoord(coord) {
@@ -132,7 +133,7 @@ Shape.registerFactory = function(factoryName, cfg) {
   return geomObj;
 };
 
-// 注册图形
+// 注册图形 --- 每个coord坐标系都有对应的注册操作 也就是每一个 Shape对应的factory有对应的shape图形对象属性
 Shape.registerShape = function(factoryName, shapeType, cfg) {
   const className = Util.upperFirst(factoryName);
   const factory = Shape[className];

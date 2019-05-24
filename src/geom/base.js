@@ -438,9 +438,15 @@ class GeomBase extends Base {
     const self = this;
     let shapeContainer = self.get('shapeContainer');
     if (!shapeContainer) {
+      /**
+       * container是view中key为viewContainer的属性的值，见
+       * view#addGeom
+       * 实际 也就是 chart中的 middlePlot canvas group
+       */
       const container = self.get('container');
       const view = self.get('view');
       const viewId = view && view.get('_id');
+      //shapeContainer是在最上层的canvas组在添加一个group
       shapeContainer = container.addGroup({
         viewId,
         visible: self.get('visible')
@@ -688,6 +694,7 @@ class GeomBase extends Base {
     this.set('coord', coord);
     const position = this.getAttr('position');
     const shapeContainer = this.get('shapeContainer');
+    //设置矩阵 -- 3 * 3 矩阵
     shapeContainer.setMatrix(coord.matrix);
     if (position) {
       position.coord = coord;
@@ -702,11 +709,14 @@ class GeomBase extends Base {
     const shapeFactory = self.getShapeFactory();
     shapeFactory.setCoord(self.get('coord'));
     self.set('shapeFactory', shapeFactory);
+    //shapeContainer是middlePlot中 addGroup产生的group
     const shapeContainer = self.get('shapeContainer');
+    //数据处理 生成归一后的点坐标，并且将坐标在 数据上链接起来(nextPoint) -- 操作的源数据 dataArray
     self._beforeMapping(dataArray);
     for (let i = 0; i < dataArray.length; i++) {
       let data = dataArray[i];
       const index = i;
+      //重新mapping数据
       data = self._mapping(data);
       mappedArray.push(data);
       self.draw(data, shapeContainer, shapeFactory, index);
@@ -742,7 +752,8 @@ class GeomBase extends Base {
       const xScale = self.getXScale();
       const field = xScale.field;
       Util.each(dataArray, function(data) {
-        data.sort(function(v1, v2) {
+        data.sort(function(v1, v2) {//将数据中的filed字段来排序
+          //translate是将非数值转换成数值
           return xScale.translate(v1[field]) - xScale.translate(v2[field]);
         });
       });
@@ -787,7 +798,7 @@ class GeomBase extends Base {
 
   /**
    * @protected
-   * 获取图形的工厂类
+   * 获取图形的工厂类 -- 对应 ./geom/area等各种图形
    * @return {Object} 工厂类对象
    */
   getShapeFactory() {
@@ -807,6 +818,7 @@ class GeomBase extends Base {
     const shapeAttr = self.getAttr('shape');
     for (let i = 0; i < data.length; i++) {
       const obj = data[i];
+      //每个数据项生成对应的点坐标
       const cfg = self.createShapePointsCfg(obj);
       const shape = shapeAttr ? self._getAttrValues(shapeAttr, obj) : null;
       const points = shapeFactory.getShapePoints(shape, cfg);
@@ -819,10 +831,12 @@ class GeomBase extends Base {
    * @protected
    * @param  {Object} obj 数据对象
    * @return {Object} cfg 获取图形对应点的配置项
+   * shape的点坐标(x,y,y0表示起始y坐标)
    */
   createShapePointsCfg(obj) {
     const xScale = this.getXScale();
     const yScale = this.getYScale();
+    //点坐标用度量操作一波 -- 实体数据的归一化
     const x = this._normalizeValues(obj[xScale.field], xScale);
     let y; // 存在没有 y 的情况
 
@@ -859,12 +873,19 @@ class GeomBase extends Base {
     return value;
   }
 
-  // 将数据归一化
+  /**
+   * 将数据归一化
+   * @param values 原始对应的需要被度量字段的值(可能对象，值，或者数组等...)
+   * @param scale 轴上对应的度量对象
+   * @returns {Array}
+   * @private
+   */
   _normalizeValues(values, scale) {
     let rst = [];
-    if (Util.isArray(values)) {
+    if (Util.isArray(values)) { // 数组
       for (let i = 0; i < values.length; i++) {
         const v = values[i];
+        //每一个scale操作都对应有实体类，参见 ./scale/base.js 以及其所有子类
         rst.push(scale.scale(v));
       }
     } else {
@@ -885,7 +906,7 @@ class GeomBase extends Base {
       newRecord.points = record.points;
       newRecord.nextPoints = record.nextPoints;
       for (const k in attrs) {
-        if (attrs.hasOwnProperty(k)) {
+        if (attrs.hasOwnProperty(k)) {//排除原型链上的属性
           const attr = attrs[k];
           const names = attr.names;
           const values = self._getAttrValues(attr, record);
@@ -913,10 +934,10 @@ class GeomBase extends Base {
     for (let i = 0; i < scales.length; i++) {
       const scale = scales[i];
       const field = scale.field;
-      if (scale.type === 'identity') {
-        params.push(scale.value);
+      if (scale.type === 'identity') {//常量类型的数值
+        params.push(scale.value); // 度量中定义的值
       } else {
-        params.push(record[field]);
+        params.push(record[field]); //数据中field对应的值
       }
     }
     const values = attr.mapping(...params);
@@ -1080,8 +1101,10 @@ class GeomBase extends Base {
     const shape = obj.shape;
     const cfg = self.getDrawCfg(obj);
 
+    //绘制之前设置主题
     self._applyViewThemeShapeStyle(cfg, shape, shapeFactory);
 
+    //最终的绘制都通过(具体的shape) shape#draw => interval#draw
     const geomShape = shapeFactory.drawShape(shape, cfg, container);
     self.appendShapeInfo(geomShape, index);
   }

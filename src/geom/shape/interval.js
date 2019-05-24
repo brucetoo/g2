@@ -68,6 +68,18 @@ function getRectPoints(cfg, isPyramid) {
   return points;
 }
 
+/**
+ M = moveto
+ L = lineto
+ H = horizontal lineto
+ V = vertical lineto
+ C = curveto
+ S = smooth curveto
+ Q = quadratic Bézier curve
+ T = smooth quadratic Bézier curveto
+ A = elliptical Arc
+ Z = closepath
+ */
 function getRectPath(points) {
   const path = [];
   for (let i = 0; i < points.length; i++) {
@@ -288,7 +300,9 @@ const Interval = Shape.registerFactory('interval', {
 // 默认柱状图
 Shape.registerShape('interval', 'rect', {
   draw(cfg, container) {
+    //绘制的属性
     const attrs = getFillAttrs(cfg);
+    //path数组[action,x,y]
     let path = getRectPath(cfg.points);
     path = this.parsePath(path);
     return container.addShape('path', {

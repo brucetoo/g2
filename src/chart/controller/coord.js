@@ -5,10 +5,30 @@
 const Util = require('../../util');
 const Coord = require('@antv/coord/lib/');
 
+//要么从options中配置，要么使用 chart.coord()来配置
 class CoordController {
+  //此option是chart中options对象中的 coords配置
   constructor(option) {
+    //可取值: rect polar theta map helix gauge clock
     this.type = 'rect';
+    //坐标系需要进行的变换操作
+    /**
+      具体的值分为:
+     rotate(angle): 坐标系旋转，angle 表示旋转的度数，单位为角度。
+     scale(sx, sy): 坐标系缩放，sx 代表 x 方向缩放比例，sy 代表 y 方向缩放比例，单位为数值。
+     reflect('' | 'x' | 'y'): 坐标系转置，将 x 或者 y 的起始、结束值倒置。
+     transpose(): 将坐标系 x 轴和 y 轴转置
+     */
     this.actions = [];
+    //可选配置项，是一个对象类型，仅适用于极坐标类型，包括 polar(极坐标)、theta(饼图)、helix(螺旋坐标系)。
+    /**
+      数据格式如下：
+     {
+       radius: 0.5, // 设置半径，值范围为 0 至 1
+       innerRadius: 0.3, // 空心圆的半径，值范围为 0 至 1
+       startAngle: -1 * Math.PI / 2, // 极坐标的起始角度，单位为弧度
+       endAngle: 3 * Math.PI / 2 // 极坐标的结束角度，单位为弧度
+    */
     this.cfg = {};
     Util.mix(this, option);
     this.option = option || {};
